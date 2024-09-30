@@ -1,8 +1,12 @@
--- ESP Script for Roblox (Highlight players with team color distinction)
+-- ESP + Aimbot Script for Roblox (Highlight enemies in red, teammates in green, and track players' heads)
 
 local ESP = {}
 local players = game:GetService("Players")
 local runService = game:GetService("RunService")
+local camera = game:GetService("Workspace").CurrentCamera
+local userInputService = game:GetService("UserInputService")
+local localPlayer = players.LocalPlayer
+local holdingRightClick = false
 
 -- Customize the ESP colors
 ESP.TeamColor = Color3.new(0, 1, 0)  -- Green for teammates
@@ -17,10 +21,10 @@ function CreateESP(player)
     highlight.OutlineTransparency = 0.5
 
     -- Team check
-    if player.Team == players.LocalPlayer.Team then
-        highlight.FillColor = ESP.TeamColor
+    if player.Team == localPlayer.Team then
+        highlight.FillColor = ESP.TeamColor -- Green for teammates
     else
-        highlight.FillColor = ESP.EnemyColor
+        highlight.FillColor = ESP.EnemyColor -- Red for enemies
     end
 end
 
@@ -35,9 +39,17 @@ function RemoveESP(player)
     end
 end
 
+-- Function to aim at a player's head
+function AimAtHead(player)
+    if player and player.Character and player.Character:FindFirstChild("Head") then
+        local head = player.Character:FindFirstChild("Head")
+        camera.CFrame = CFrame.new(camera.CFrame.Position, head.Position)
+    end
+end
+
 -- Apply ESP to existing players
 for _, player in pairs(players:GetPlayers()) do
-    if player ~= players.LocalPlayer and player.Character then
+    if player ~= localPlayer and player.Character then
         CreateESP(player)
         -- Remove ESP when player dies
         player.CharacterRemoving:Connect(function()
@@ -53,10 +65,36 @@ players.PlayerAdded:Connect(function(player)
     end)
 end)
 
+-- Aimbot: Track player head when holding right mouse button
+userInputService.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then -- Right Mouse Button
+        holdingRightClick = true
+    end
+end)
+
+userInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then -- Right Mouse Button
+        holdingRightClick = false
+    end
+end)
+
+-- Main loop to aim at enemies when right-click is held
+runService.RenderStepped:Connect(function()
+    for _, player in pairs(players:GetPlayers()) do
+        if player ~= localPlayer and player.Character and holdingRightClick then
+            -- Check if the player is an enemy
+            if player.Team ~= localPlayer.Team and player.Character:FindFirstChild("Head") then
+                AimAtHead(player) -- Track the player's head
+                break -- Aim at the first enemy found
+            end
+        end
+    end
+end)
+
 -- Update ESP during runtime
 runService.RenderStepped:Connect(function()
     for _, player in pairs(players:GetPlayers()) do
-        if player ~= players.LocalPlayer and player.Character then
+        if player ~= localPlayer and player.Character then
             CreateESP(player)
         end
     end
