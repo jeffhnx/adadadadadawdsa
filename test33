@@ -71,7 +71,7 @@ function GetClosestEnemy()
     local closestDistance = math.huge
 
     for _, player in pairs(players:GetPlayers()) do
-        if player ~= localPlayer and player.Team ~= localPlayer.Team then
+        if player ~= localPlayer and player.Team ~= localPlayer.Team and player.Character and player.Character:FindFirstChild("Head") then
             local distanceFromCenter = GetScreenDistanceFromCenter(player)
             if distanceFromCenter < closestDistance then
                 closestDistance = distanceFromCenter
@@ -87,6 +87,7 @@ end
 function AimAtHead(player)
     if player and player.Character and player.Character:FindFirstChild("Head") then
         local head = player.Character:FindFirstChild("Head")
+        -- Adjust the camera CFrame to aim at the player's head
         camera.CFrame = CFrame.new(camera.CFrame.Position, head.Position)
     end
 end
@@ -127,7 +128,7 @@ userInputService.InputEnded:Connect(function(input)
     end
 end)
 
--- Main loop to aim at enemies when right-click is held
+-- Main loop to aim at the closest enemy when right-click is held
 runService.RenderStepped:Connect(function()
     if holdingRightClick then
         local closestEnemy = GetClosestEnemy()
