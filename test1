@@ -1,4 +1,4 @@
--- LocalScript for ESP and Aimbot
+-- LocalScript for ESP and Aimbot (Highlights all players for you)
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -18,13 +18,9 @@ local function createESP(player)
         highlight.FillTransparency = 0.5
         highlight.OutlineTransparency = 0
         
-        -- Set glow color based on team
-        if player.Team == LocalPlayer.Team then
-            highlight.FillColor = Color3.fromRGB(0, 255, 0) -- Teammates (Green)
-        else
-            highlight.FillColor = Color3.fromRGB(255, 0, 0) -- Enemies (Red)
-        end
-        
+        -- Set color for all players (for you only)
+        highlight.FillColor = Color3.fromRGB(255, 255, 0) -- Highlight all players in yellow
+
         highlight.Parent = player.Character.HumanoidRootPart
         espObjects[player] = highlight
     end
@@ -56,7 +52,7 @@ local function getClosestEnemyToCenter()
     local closestDistance = math.huge
 
     for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") and player.Team ~= LocalPlayer.Team then
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
             local head = player.Character.Head
             local headPosition, onScreen = Camera:WorldToScreenPoint(head.Position)
             if onScreen then
