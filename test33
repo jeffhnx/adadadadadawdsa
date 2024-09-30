@@ -1,151 +1,173 @@
--- ESP + Aimbot Script for Roblox (Highlight enemies in red, teammates in green, and track closest player's head to the center of the screen)
+--// Cache
 
-local ESP = {}
-local players = game:GetService("Players")
-local runService = game:GetService("RunService")
-local camera = game:GetService("Workspace").CurrentCamera
-local userInputService = game:GetService("UserInputService")
-local localPlayer = players.LocalPlayer
-local holdingRightClick = false
-local espEnabled = true -- ESP initially enabled
+local select = select
+local pcall, getgenv, next, Vector2, mathclamp, type, mousemoverel = select(1, pcall, getgenv, next, Vector2.new, math.clamp, type, mousemoverel or (Input and Input.MouseMove))
 
--- Customize the ESP colors
-ESP.TeamColor = Color3.new(0, 1, 0)  -- Green for teammates
-ESP.EnemyColor = Color3.new(1, 0, 0) -- Red for enemies
+--// Preventing Multiple Processes
 
--- Function to create ESP for a player
-function CreateESP(player)
-    local highlight = Instance.new("Highlight")
-    highlight.Parent = player.Character
-    highlight.Adornee = player.Character
-    highlight.FillTransparency = 0.5
-    highlight.OutlineTransparency = 0.5
+pcall(function()
+    getgenv().Aimbot.Functions:Exit()
+end)
 
-    -- Team check
-    if player.Team == localPlayer.Team then
-        highlight.FillColor = ESP.TeamColor -- Green for teammates
-    else
-        highlight.FillColor = ESP.EnemyColor -- Red for enemies
-    end
+--// Environment
+
+getgenv().Aimbot = {}
+local Environment = getgenv().Aimbot
+
+--// Services
+
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+local Camera = workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+
+--// Variables
+
+local RequiredDistance, Typing, Running, Animation, ServiceConnections = 2000, false, false, nil, {}
+
+--// Script Settings
+
+Environment.Settings = {
+    Enabled = true,
+    TeamCheck = true, -- Enable team check
+    AliveCheck = true,
+    WallCheck = false, -- Laggy
+    Sensitivity = 0, -- Animation length (in seconds) before fully locking onto target
+    ThirdPerson = false, -- Uses mousemoverel instead of CFrame to support locking in third person (could be choppy)
+    ThirdPersonSensitivity = 3, -- Boundary: 0.1 - 5
+    TriggerKey = "MouseButton2", -- Right mouse button for aimbot
+    Toggle = false,
+    LockPart = "Head" -- Body part to lock on
+}
+
+Environment.FOVSettings = {
+    Enabled = false,
+    Visible = false,
+    Amount = 90,
+    Color = Color3.fromRGB(255, 255, 255),
+    LockedColor = Color3.fromRGB(255, 70, 70),
+    Transparency = 0.5,
+    Sides = 60,
+    Thickness = 1,
+    Filled = false
+}
+
+Environment.FOVCircle = Drawing.new("Circle")
+
+--// Functions
+
+local function CancelLock()
+    Environment.Locked = nil
+    if Animation then Animation:Cancel() end
+    Environment.FOVCircle.Color = Environment.FOVSettings.Color
 end
 
--- Function to remove ESP when player dies or leaves
-function RemoveESP(player)
-    if player.Character then
-        for _, v in pairs(player.Character:GetChildren()) do
-            if v:IsA("Highlight") then
-                v:Destroy()
+local function GetClosestPlayer()
+    if not Environment.Locked then
+        RequiredDistance = (Environment.FOVSettings.Enabled and Environment.FOVSettings.Amount or 2000)
+
+        for _, v in next, Players:GetPlayers() do
+            if v ~= LocalPlayer then
+                if v.Character and v.Character:FindFirstChild(Environment.Settings.LockPart) and v.Character:FindFirstChildOfClass("Humanoid") then
+                    if Environment.Settings.TeamCheck and v.Team == LocalPlayer.Team then continue end
+                    if Environment.Settings.AliveCheck and v.Character:FindFirstChildOfClass("Humanoid").Health <= 0 then continue end
+                    if Environment.Settings.WallCheck and #(Camera:GetPartsObscuringTarget({v.Character[Environment.Settings.LockPart].Position}, v.Character:GetDescendants())) > 0 then continue end
+
+                    local Vector, OnScreen = Camera:WorldToViewportPoint(v.Character[Environment.Settings.LockPart].Position)
+                    local Distance = (Vector2(UserInputService:GetMouseLocation().X, UserInputService:GetMouseLocation().Y) - Vector2(Vector.X, Vector.Y)).Magnitude
+
+                    if Distance < RequiredDistance and OnScreen then
+                        RequiredDistance = Distance
+                        Environment.Locked = v
+                    end
+                end
             end
         end
+    elseif (Vector2(UserInputService:GetMouseLocation().X, UserInputService:GetMouseLocation().Y) - Vector2(Camera:WorldToViewportPoint(Environment.Locked.Character[Environment.Settings.LockPart].Position).X, Camera:WorldToViewportPoint(Environment.Locked.Character[Environment.Settings.Locked].Position).Y)).Magnitude > RequiredDistance then
+        CancelLock()
     end
 end
 
--- Toggle ESP on or off by destroying/adding highlights
-function ToggleESP(enabled)
-    for _, player in pairs(players:GetPlayers()) do
-        if player ~= localPlayer and player.Character then
-            if enabled then
-                CreateESP(player) -- Add ESP if enabled
-            else
-                RemoveESP(player) -- Remove ESP if disabled
-            end
+--// Main
+
+local function Load()
+    ServiceConnections.RenderSteppedConnection = RunService.RenderStepped:Connect(function()
+        if Environment.FOVSettings.Enabled and Environment.Settings.Enabled then
+            Environment.FOVCircle.Radius = Environment.FOVSettings.Amount
+            Environment.FOVCircle.Thickness = Environment.FOVSettings.Thickness
+            Environment.FOVCircle.Filled = Environment.FOVSettings.Filled
+            Environment.FOVCircle.NumSides = Environment.FOVSettings.Sides
+            Environment.FOVCircle.Color = Environment.FOVSettings.Color
+            Environment.FOVCircle.Transparency = Environment.FOVSettings.Transparency
+            Environment.FOVCircle.Visible = Environment.FOVSettings.Visible
+            Environment.FOVCircle.Position = Vector2(UserInputService:GetMouseLocation().X, UserInputService:GetMouseLocation().Y)
+        else
+            Environment.FOVCircle.Visible = false
         end
-    end
-end
 
--- Function to calculate screen distance (2D) from center of the screen to a player's head
-function GetScreenDistanceFromCenter(player)
-    if player.Character and player.Character:FindFirstChild("Head") then
-        local headPosition = camera:WorldToViewportPoint(player.Character.Head.Position)
-        local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
-        local headOnScreen = Vector2.new(headPosition.X, headPosition.Y)
-        local distanceFromCenter = (screenCenter - headOnScreen).Magnitude
-        return distanceFromCenter
-    end
-    return math.huge -- Return a large value if no valid head is found
-end
+        if Running and Environment.Settings.Enabled then
+            GetClosestPlayer()
 
--- Function to find the closest enemy to the center of the screen
-function GetClosestEnemy()
-    local closestEnemy = nil
-    local closestDistance = math.huge
+            if Environment.Locked then
+                local Vector = Camera:WorldToViewportPoint(Environment.Locked.Character[Environment.Settings.LockPart].Position)
+                Camera.CFrame = CFrame.new(Camera.CFrame.Position, Environment.Locked.Character[Environment.Settings.LockPart].Position)
 
-    for _, player in pairs(players:GetPlayers()) do
-        if player ~= localPlayer and player.Team ~= localPlayer.Team and player.Character and player.Character:FindFirstChild("Head") then
-            local distanceFromCenter = GetScreenDistanceFromCenter(player)
-            if distanceFromCenter < closestDistance then
-                closestDistance = distanceFromCenter
-                closestEnemy = player
+                Environment.FOVCircle.Color = Environment.FOVSettings.LockedColor
             end
-        end
-    end
-
-    return closestEnemy
-end
-
--- Function to aim at a player's head
-function AimAtHead(player)
-    if player and player.Character and player.Character:FindFirstChild("Head") then
-        local head = player.Character.Head
-        -- Adjust the camera CFrame to aim at the player's head
-        local aimPosition = head.Position + Vector3.new(0, 0.5, 0) -- Adjust for head height
-        camera.CFrame = CFrame.new(camera.CFrame.Position, aimPosition)
-    end
-end
-
--- Apply ESP to existing players
-for _, player in pairs(players:GetPlayers()) do
-    if player ~= localPlayer and player.Character then
-        CreateESP(player)
-        -- Remove ESP when player dies
-        player.CharacterRemoving:Connect(function()
-            RemoveESP(player)
-        end)
-    end
-end
-
--- Apply ESP to newly joining players
-players.PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(function()
-        if espEnabled then
-            CreateESP(player)
         end
     end)
-end)
 
--- Aimbot: Track the closest player's head to the center of the screen when holding right mouse button
-userInputService.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton2 then -- Right Mouse Button
-        holdingRightClick = true
-    elseif input.KeyCode == Enum.KeyCode.F then -- F key to toggle ESP
-        espEnabled = not espEnabled
-        ToggleESP(espEnabled)
-    end
-end)
+    ServiceConnections.InputBeganConnection = UserInputService.InputBegan:Connect(function(Input)
+        if not Typing then
+            pcall(function()
+                if Input.UserInputType == Enum.UserInputType[Environment.Settings.TriggerKey] then
+                    if Environment.Settings.Toggle then
+                        Running = not Running
 
-userInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton2 then -- Right Mouse Button
-        holdingRightClick = false
-    end
-end)
-
--- Main loop to aim at the closest enemy when right-click is held
-runService.RenderStepped:Connect(function()
-    if holdingRightClick then
-        local closestEnemy = GetClosestEnemy()
-        if closestEnemy then
-            AimAtHead(closestEnemy)
+                        if not Running then
+                            CancelLock()
+                        end
+                    else
+                        Running = true
+                    end
+                end
+            end)
         end
-    end
-end)
+    end)
 
--- Update ESP during runtime if it's enabled
-runService.RenderStepped:Connect(function()
-    if espEnabled then
-        for _, player in pairs(players:GetPlayers()) do
-            if player ~= localPlayer and player.Character then
-                CreateESP(player)
+    ServiceConnections.InputEndedConnection = UserInputService.InputEnded:Connect(function(Input)
+        if not Typing then
+            if not Environment.Settings.Toggle then
+                pcall(function()
+                    if Input.UserInputType == Enum.UserInputType[Environment.Settings.TriggerKey] then
+                        Running = false
+                        CancelLock()
+                    end
+                end)
             end
         end
+    end)
+end
+
+--// Functions
+
+Environment.Functions = {}
+
+function Environment.Functions:Exit()
+    for _, v in next, ServiceConnections do
+        v:Disconnect()
     end
-end)
+
+    if Environment.FOVCircle.Remove then Environment.FOVCircle:Remove() end
+
+    getgenv().Aimbot.Functions = nil
+    getgenv().Aimbot = nil
+    
+    Load = nil; GetClosestPlayer = nil; CancelLock = nil
+end
+
+--// Load
+
+Load()
