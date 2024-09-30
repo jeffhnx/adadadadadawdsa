@@ -17,14 +17,14 @@ local function createESP(player)
         highlight.Adornee = player.Character.HumanoidRootPart
         highlight.FillTransparency = 0.5
         highlight.OutlineTransparency = 0
-
+        
         -- Set glow color based on team
         if player.Team == LocalPlayer.Team then
             highlight.FillColor = Color3.fromRGB(0, 255, 0) -- Teammates (Green)
         else
             highlight.FillColor = Color3.fromRGB(255, 0, 0) -- Enemies (Red)
         end
-
+        
         highlight.Parent = player.Character.HumanoidRootPart
         espObjects[player] = highlight
     end
@@ -56,18 +56,16 @@ local function getClosestEnemyToCenter()
     local closestDistance = math.huge
 
     for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
-            local head = player.Character:FindFirstChild("Head")
-            if head and player.Team ~= LocalPlayer.Team then
-                local headPosition, onScreen = Camera:WorldToScreenPoint(head.Position)
-                if onScreen then
-                    local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-                    local distanceFromCenter = (Vector2.new(headPosition.X, headPosition.Y) - screenCenter).Magnitude
-
-                    if distanceFromCenter < closestDistance then
-                        closestDistance = distanceFromCenter
-                        closestPlayer = player
-                    end
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") and player.Team ~= LocalPlayer.Team then
+            local head = player.Character.Head
+            local headPosition, onScreen = Camera:WorldToScreenPoint(head.Position)
+            if onScreen then
+                local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+                local distanceFromCenter = (Vector2.new(headPosition.X, headPosition.Y) - screenCenter).Magnitude
+                
+                if distanceFromCenter < closestDistance then
+                    closestDistance = distanceFromCenter
+                    closestPlayer = player
                 end
             end
         end
@@ -100,7 +98,7 @@ end
 
 -- Toggle ESP with G key
 UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
-    if input.KeyCode == Enum.KeyCode.G then
+    if input.KeyCode == Enum.KeyCode.G and not gameProcessedEvent then
         espEnabled = not espEnabled
         if espEnabled then
             updateESP()
@@ -114,7 +112,7 @@ end)
 
 -- Toggle Aimbot with right mouse button hold
 UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
-    if input.UserInputType == Enum.UserInputType.MouseButton2 then -- Right mouse button
+    if input.UserInputType == Enum.UserInputType.MouseButton2 and not gameProcessedEvent then -- Right mouse button
         aimbotEnabled = true
         aimbotLoop() -- Start the aimbot loop when right mouse is held
     end
