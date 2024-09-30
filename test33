@@ -86,9 +86,10 @@ end
 -- Function to aim at a player's head
 function AimAtHead(player)
     if player and player.Character and player.Character:FindFirstChild("Head") then
-        local head = player.Character:FindFirstChild("Head")
+        local head = player.Character.Head
         -- Adjust the camera CFrame to aim at the player's head
-        camera.CFrame = CFrame.new(camera.CFrame.Position, head.Position)
+        local aimPosition = head.Position + Vector3.new(0, 0.5, 0) -- Adjust for head height
+        camera.CFrame = CFrame.new(camera.CFrame.Position, aimPosition)
     end
 end
 
