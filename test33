@@ -1,0 +1,150 @@
+-- Settings
+local Settings = {
+    Box_Color_Enemy = Color3.fromRGB(255, 0, 0), -- Red for enemies
+    Box_Color_Teammate = Color3.fromRGB(0, 255, 0), -- Green for teammates
+    Box_Thickness = 2,
+    Team_Check = true, -- Check teams
+    Autothickness = true
+}
+
+-- Locals
+local Space = game:GetService("Workspace")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Camera = Space.CurrentCamera
+
+-- Function to create a new line for ESP
+local function NewLine(color, thickness)
+    local line = Drawing.new("Line")
+    line.Visible = false
+    line.From = Vector2.new(0, 0)
+    line.To = Vector2.new(0, 0)
+    line.Color = color
+    line.Thickness = thickness
+    line.Transparency = 1
+    return line
+end
+
+-- Functions to change the visibility and color of lines
+local function Vis(lib, state)
+    for _, v in pairs(lib) do
+        v.Visible = state
+    end
+end
+
+local function Colorize(lib, color)
+    for _, v in pairs(lib) do
+        v.Color = color
+    end
+end
+
+-- Function to handle drawing boxes (ESP)
+local function DrawESP(plr)
+    repeat wait() until plr.Character ~= nil and plr.Character:FindFirstChild("Humanoid") ~= nil
+    local Library = {
+        TL1 = NewLine(Settings.Box_Color_Enemy, Settings.Box_Thickness),
+        TL2 = NewLine(Settings.Box_Color_Enemy, Settings.Box_Thickness),
+        TR1 = NewLine(Settings.Box_Color_Enemy, Settings.Box_Thickness),
+        TR2 = NewLine(Settings.Box_Color_Enemy, Settings.Box_Thickness),
+        BL1 = NewLine(Settings.Box_Color_Enemy, Settings.Box_Thickness),
+        BL2 = NewLine(Settings.Box_Color_Enemy, Settings.Box_Thickness),
+        BR1 = NewLine(Settings.Box_Color_Enemy, Settings.Box_Thickness),
+        BR2 = NewLine(Settings.Box_Color_Enemy, Settings.Box_Thickness)
+    }
+
+    local function UpdateESP()
+        while true do
+            wait(1)
+            if plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and plr ~= LocalPlayer then
+                local rootPart = plr.Character.HumanoidRootPart
+                local headPos, onScreen = Camera:WorldToViewportPoint(rootPart.Position)
+
+                if onScreen then
+                    local distance = (Camera.CFrame.Position - rootPart.Position).Magnitude
+                    if Settings.Team_Check and LocalPlayer.Team == plr.Team then
+                        Colorize(Library, Settings.Box_Color_Teammate) -- Green for teammates
+                    else
+                        Colorize(Library, Settings.Box_Color_Enemy) -- Red for enemies
+                    end
+                    -- Draw the ESP
+                    Vis(Library, true)
+                else
+                    Vis(Library, false)
+                end
+            else
+                Vis(Library, false)
+            end
+        end
+    end
+    coroutine.wrap(UpdateESP)()
+end
+
+-- ESP Initialization
+for _, player in pairs(Players:GetPlayers()) do
+    if player ~= LocalPlayer then
+        DrawESP(player)
+    end
+end
+
+Players.PlayerAdded:Connect(function(player)
+    DrawESP(player)
+end)
+
+-- Aimbot Section
+local aimbotEnabled = false
+local function getClosestEnemyToCenter()
+    local closestPlayer = nil
+    local closestDistance = math.huge
+
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
+            local head = player.Character.Head
+            local headPosition, onScreen = Camera:WorldToScreenPoint(head.Position)
+            if onScreen then
+                local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+                local distanceFromCenter = (Vector2.new(headPosition.X, headPosition.Y) - screenCenter).Magnitude
+
+                if distanceFromCenter < closestDistance then
+                    closestDistance = distanceFromCenter
+                    closestPlayer = player
+                end
+            end
+        end
+    end
+
+    return closestPlayer
+end
+
+local function aimAtPlayerHead(player)
+    if player and player.Character then
+        local head = player.Character:FindFirstChild("Head")
+        if head then
+            local aimPosition = head.Position + Vector3.new(0, 0.5, 0)
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, aimPosition)
+        end
+    end
+end
+
+local function aimbotLoop()
+    while aimbotEnabled do
+        local targetPlayer = getClosestEnemyToCenter()
+        if targetPlayer then
+            aimAtPlayerHead(targetPlayer)
+        end
+        wait()
+    end
+end
+
+-- Toggle aimbot with right-click hold
+game:GetService("UserInputService").InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        aimbotEnabled = true
+        aimbotLoop()
+    end
+end)
+
+game:GetService("UserInputService").InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        aimbotEnabled = false
+    end
+end)
