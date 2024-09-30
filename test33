@@ -1,137 +1,104 @@
 --// Cache
-local select = select
-local pcall, getgenv, next, Vector2, mathclamp, type, mousemoverel = select(1, pcall, getgenv, next, Vector2.new, math.clamp, type, mousemoverel or (Input and Input.MouseMove))
-
---// Preventing Multiple Processes
-pcall(function()
-    getgenv().Aimbot.Functions:Exit()
-end)
-
---// Environment
-getgenv().Aimbot = {}
-local Environment = getgenv().Aimbot
-
---// Services
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local Players = game:GetService("Players")
 local Camera = workspace.CurrentCamera
-local LocalPlayer = Players.LocalPlayer
 
---// Variables
-local RequiredDistance, Typing, Running, ServiceConnections = 2000, false, false, {}
+--// ESP Settings
+local ESPEnabled = true
+local TeamCheck = true -- Enable team check
+local ESPObjects = {}
 
---// Script Settings
-Environment.Settings = {
-    Enabled = true,
-    TeamCheck = true, -- Enable team check
-    LockPart = "Head" -- Body part to lock on
-}
+--// Aimbot Settings
+local AimbotEnabled = true
+local Running = false
+local LockPart = "Head" -- Part to lock onto
+local TriggerKey = Enum.UserInputType.MouseButton2 -- Right mouse button
 
---// Create ESP for players
-local function createESP(player)
+--// Function to create ESP
+local function CreateESP(player)
     local highlight = Instance.new("Highlight")
     highlight.Parent = player.Character
-    highlight.Adornee = player.Character
-
-    if player.Team == LocalPlayer.Team then
-        highlight.FillColor = Color3.fromRGB(0, 255, 0) -- Green for teammates
-    else
-        highlight.FillColor = Color3.fromRGB(255, 0, 0) -- Red for enemies
-    end
-
+    highlight.FillColor = player.Team == LocalPlayer.Team and Color3.new(0, 1, 0) or Color3.new(1, 0, 0) -- Green for teammates, Red for enemies
     highlight.FillTransparency = 0.5
+    highlight.OutlineColor = Color3.new(1, 1, 1)
+    highlight.OutlineTransparency = 0
+    ESPObjects[player] = highlight
 end
 
---// Create ESP for existing players
-for _, player in pairs(Players:GetPlayers()) do
-    if player ~= LocalPlayer and player.Character then
-        createESP(player)
+--// Function to remove ESP
+local function RemoveESP(player)
+    if ESPObjects[player] then
+        ESPObjects[player]:Destroy()
+        ESPObjects[player] = nil
     end
 end
 
---// Create ESP for players that join the game
-Players.PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(function()
-        createESP(player)
-    end)
-end)
-
---// Update ESP when players respawn
-Players.PlayerRemoving:Connect(function(player)
-    if player.Character and player.Character:FindFirstChild("Highlight") then
-        player.Character.Highlight:Destroy()
+--// Function to update ESP
+local function UpdateESP()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.Character then
+            if ESPEnabled and not ESPObjects[player] then
+                CreateESP(player)
+            elseif not ESPEnabled and ESPObjects[player] then
+                RemoveESP(player)
+            end
+        end
     end
-end)
-
---// Functions
-local function CancelLock()
-    Environment.Locked = nil
 end
 
+--// Function to get closest player
 local function GetClosestPlayer()
-    if not Environment.Locked then
-        RequiredDistance = 2000
+    local closestPlayer = nil
+    local closestDistance = math.huge
 
-        for _, v in next, Players:GetPlayers() do
-            if v ~= LocalPlayer then
-                if v.Character and v.Character:FindFirstChild(Environment.Settings.LockPart) then
-                    if Environment.Settings.TeamCheck and v.Team == LocalPlayer.Team then continue end
-                    
-                    local Vector, OnScreen = Camera:WorldToViewportPoint(v.Character[Environment.Settings.LockPart].Position)
-                    local Distance = (Vector2(UserInputService:GetMouseLocation().X, UserInputService:GetMouseLocation().Y) - Vector2(Vector.X, Vector.Y)).Magnitude
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild(LockPart) then
+            if TeamCheck and player.Team == LocalPlayer.Team then continue end
 
-                    if Distance < RequiredDistance and OnScreen then
-                        RequiredDistance = Distance
-                        Environment.Locked = v
-                    end
+            local targetPos, onScreen = Camera:WorldToViewportPoint(player.Character[LockPart].Position)
+
+            if onScreen then
+                local mousePos = UserInputService:GetMouseLocation()
+                local distance = (Vector2.new(mousePos.X, mousePos.Y) - Vector2.new(targetPos.X, targetPos.Y)).Magnitude
+
+                if distance < closestDistance then
+                    closestDistance = distance
+                    closestPlayer = player
                 end
             end
         end
     end
+    return closestPlayer
 end
 
---// Main
-local function Load()
-    ServiceConnections.RenderSteppedConnection = RunService.RenderStepped:Connect(function()
-        if Running and Environment.Settings.Enabled then
-            GetClosestPlayer()
+--// Main Aimbot and ESP Function
+RunService.RenderStepped:Connect(function()
+    UpdateESP() -- Update ESP for players
 
-            if Environment.Locked then
-                Camera.CFrame = CFrame.new(Camera.CFrame.Position, Environment.Locked.Character[Environment.Settings.LockPart].Position)
-            end
+    if Running and AimbotEnabled then
+        local targetPlayer = GetClosestPlayer()
+
+        if targetPlayer and targetPlayer.Character then
+            local targetPos = targetPlayer.Character[LockPart].Position
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetPos) -- Lock the camera on the target
         end
-    end)
-
-    ServiceConnections.InputBeganConnection = UserInputService.InputBegan:Connect(function(Input)
-        if not Typing then
-            if Input.UserInputType == Enum.UserInputType.MouseButton2 then
-                Running = true
-            end
-        end
-    end)
-
-    ServiceConnections.InputEndedConnection = UserInputService.InputEnded:Connect(function(Input)
-        if not Typing then
-            if Input.UserInputType == Enum.UserInputType.MouseButton2 then
-                Running = false
-                CancelLock()
-            end
-        end
-    end)
-end
-
---// Functions
-Environment.Functions = {}
-
-function Environment.Functions:Exit()
-    for _, v in next, ServiceConnections do
-        v:Disconnect()
     end
+end)
 
-    getgenv().Aimbot.Functions = nil
-    getgenv().Aimbot = nil
-end
+--// Input Handling
+UserInputService.InputBegan:Connect(function(input)
+    if input.UserInputType == TriggerKey then
+        Running = true
+    end
+end)
 
---// Load
-Load()
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == TriggerKey then
+        Running = false
+    end
+end)
+
+--// Cleanup on player removal
+Players.PlayerRemoving:Connect(RemoveESP)
