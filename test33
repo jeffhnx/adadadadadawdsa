@@ -21,6 +21,8 @@ local passwordBox = Instance.new("TextBox")
 passwordBox.Size = UDim2.new(0, 180, 0, 25)
 passwordBox.Position = UDim2.new(0, 10, 0, 10)
 passwordBox.PlaceholderText = "Enter Password"
+passwordBox.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+passwordBox.TextColor3 = Color3.new(1, 1, 1)
 passwordBox.Parent = screenGui
 
 -- Function to create checkboxes
@@ -72,6 +74,8 @@ createUI()
 
 -- Function to create ESP for players
 local function PlayerESP()
+    if not _G.PlayerESP then return end -- Only create ESP if it's enabled
+
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
             if _G.TeamCheck and player.Team == LocalPlayer.Team then
