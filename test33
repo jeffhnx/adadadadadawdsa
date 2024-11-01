@@ -10,6 +10,48 @@ _G.TeamCheck = false
 _G.Aimbot = false
 _G.AimbotStrength = 0.5 -- Default Aimbot strength
 _G.ESPColor = Color3.new(1, 0, 0) -- Default ESP color (Red)
+local password = "1221" -- Password to access the GUI
+
+-- Create the password input GUI
+local passwordGui = Instance.new("ScreenGui")
+passwordGui.Name = "PasswordGUI"
+passwordGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+local passwordFrame = Instance.new("Frame")
+passwordFrame.Size = UDim2.new(0, 250, 0, 150)
+passwordFrame.Position = UDim2.new(0.5, -125, 0.5, -75)
+passwordFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+passwordFrame.Parent = passwordGui
+
+local passwordLabel = Instance.new("TextLabel")
+passwordLabel.Text = "Enter Password:"
+passwordLabel.Font = Enum.Font.SourceSansBold
+passwordLabel.TextSize = 18
+passwordLabel.Size = UDim2.new(1, 0, 0, 30)
+passwordLabel.TextColor3 = Color3.new(1, 1, 1)
+passwordLabel.BackgroundTransparency = 1
+passwordLabel.Parent = passwordFrame
+
+local passwordInput = Instance.new("TextBox")
+passwordInput.Size = UDim2.new(1, 0, 0, 30)
+passwordInput.Position = UDim2.new(0, 0, 0, 40)
+passwordInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+passwordInput.TextColor3 = Color3.new(1, 1, 1)
+passwordInput.Font = Enum.Font.SourceSans
+passwordInput.TextSize = 16
+passwordInput.PlaceholderText = "Password"
+passwordInput.ClearTextOnFocus = false
+passwordInput.Parent = passwordFrame
+
+local submitButton = Instance.new("TextButton")
+submitButton.Size = UDim2.new(0, 100, 0, 30)
+submitButton.Position = UDim2.new(0.5, -50, 0, 80)
+submitButton.Text = "Submit"
+submitButton.TextColor3 = Color3.new(1, 1, 1)
+submitButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+submitButton.Font = Enum.Font.SourceSans
+submitButton.TextSize = 14
+submitButton.Parent = passwordFrame
 
 -- Create the main ScreenGui
 local screenGui = Instance.new("ScreenGui")
@@ -17,7 +59,7 @@ screenGui.Name = "BerToxGUI"
 screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 screenGui.Enabled = false -- Start with GUI hidden
 
--- Create a frame for the GUI
+-- Create a frame for the main GUI
 local mainFrame = Instance.new("Frame")
 mainFrame.Size = UDim2.new(0, 250, 0, 350)
 mainFrame.Position = UDim2.new(0.05, 0, 0.1, 0)
@@ -129,47 +171,32 @@ colorButton.MouseButton1Click:Connect(function()
     createColorButton(Color3.new(1, 1, 0), UDim2.new(0, 10, 70)) -- Yellow
     createColorButton(Color3.new(1, 0, 1), UDim2.new(0, 70, 70)) -- Magenta
     createColorButton(Color3.new(0, 1, 1), UDim2.new(0, 130, 70)) -- Cyan
-    createColorButton(Color3.new(1, 0.5, 0), UDim2.new(0, 10, 130)) -- Orange
-    createColorButton(Color3.new(0.5, 0, 0.5), UDim2.new(0, 70, 130)) -- Purple
-    createColorButton(Color3.new(0.5, 0.25, 0), UDim2.new(0, 130, 130)) -- Brown
 end)
 
--- Toggle GUI visibility with Right Control
-UserInputService.InputBegan:Connect(function(input)
-    if input.KeyCode == Enum.KeyCode.RightControl then
-        screenGui.Enabled = not screenGui.Enabled
-    end
-end)
-
--- Function to refresh ESP
-local function RefreshESP()
-    while true do
-        wait(1)
-        for _, player in ipairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                local highlight = Instance.new("Highlight")
-                highlight.Parent = player.Character
-                highlight.Adornee = player.Character
-
-                -- Team Check logic
-                if _G.TeamCheck and player.Team == LocalPlayer.Team then
-                    highlight.Enabled = false -- Don't show ESP for teammates
-                else
-                    highlight.FillColor = _G.ESPColor
-                    highlight.OutlineColor = Color3.new(0, 0, 0)
-                    highlight.Enabled = _G.PlayerESP
-                end
-
-                -- Cleanup highlight when player leaves
-                player.CharacterRemoving:Connect(function()
-                    highlight:Destroy()
-                end)
+-- Function to create ESP for players
+local function PlayerESP()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            if _G.TeamCheck and player.Team == LocalPlayer.Team then
+                continue
             end
+
+            local espBox = Instance.new("BoxHandleAdornment")
+            espBox.Size = Vector3.new(2, 5, 1)
+            espBox.Color3 = _G.ESPColor
+            espBox.AlwaysOnTop = true
+            espBox.ZIndex = 10
+            espBox.Parent = player.Character.HumanoidRootPart
+
+            -- Cleanup esp on character respawn
+            player.CharacterRemoving:Connect(function()
+                espBox:Destroy()
+            end)
         end
     end
 end
 
--- Function to get the closest player for Aimbot
+-- Function to get the closest player for aimbot
 local function GetClosestPlayer()
     local closestPlayer = nil
     local closestDistance = math.huge
@@ -202,10 +229,31 @@ local function Aimbot()
     end
 end
 
+-- Function to show/hide main GUI
+local function toggleMainGUI()
+    screenGui.Enabled = not screenGui.Enabled
+end
+
+-- Handle password submission
+submitButton.MouseButton1Click:Connect(function()
+    if passwordInput.Text == password then
+        passwordGui:Destroy() -- Remove password GUI
+        screenGui.Enabled = true -- Show main GUI
+    else
+        passwordInput.Text = "" -- Clear input if incorrect
+        passwordInput.PlaceholderText = "Incorrect Password, Try Again"
+    end
+end)
+
 -- Main render loop
 RunService.RenderStepped:Connect(function()
+    PlayerESP()
     Aimbot()
 end)
 
--- Start ESP refresh loop
-coroutine.wrap(RefreshESP)()
+-- Input to show/hide GUI
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if input.KeyCode == Enum.KeyCode.RightControl then
+        toggleMainGUI()
+    end
+end)
