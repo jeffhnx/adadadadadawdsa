@@ -8,75 +8,33 @@ local LocalPlayer = Players.LocalPlayer
 _G.PlayerESP = false
 _G.TeamCheck = false
 _G.Aimbot = false
-_G.AimbotStrength = 0.5 -- Default Aimbot strength
-_G.ESPColor = Color3.new(1, 0, 0) -- Default ESP color (Red)
-local password = "1221" -- Password to access the GUI
-
--- Create the password input GUI
-local passwordGui = Instance.new("ScreenGui")
-passwordGui.Name = "PasswordGUI"
-passwordGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-
-local passwordFrame = Instance.new("Frame")
-passwordFrame.Size = UDim2.new(0, 250, 0, 150)
-passwordFrame.Position = UDim2.new(0.5, -125, 0.5, -75)
-passwordFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-passwordFrame.Parent = passwordGui
-
-local passwordLabel = Instance.new("TextLabel")
-passwordLabel.Text = "Enter Password:"
-passwordLabel.Font = Enum.Font.SourceSansBold
-passwordLabel.TextSize = 18
-passwordLabel.Size = UDim2.new(1, 0, 0, 30)
-passwordLabel.TextColor3 = Color3.new(1, 1, 1)
-passwordLabel.BackgroundTransparency = 1
-passwordLabel.Parent = passwordFrame
-
-local passwordInput = Instance.new("TextBox")
-passwordInput.Size = UDim2.new(1, 0, 0, 30)
-passwordInput.Position = UDim2.new(0, 0, 0, 40)
-passwordInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-passwordInput.TextColor3 = Color3.new(1, 1, 1)
-passwordInput.Font = Enum.Font.SourceSans
-passwordInput.TextSize = 16
-passwordInput.PlaceholderText = "Password"
-passwordInput.ClearTextOnFocus = false
-passwordInput.Parent = passwordFrame
-
-local submitButton = Instance.new("TextButton")
-submitButton.Size = UDim2.new(0, 100, 0, 30)
-submitButton.Position = UDim2.new(0.5, -50, 0, 80)
-submitButton.Text = "Submit"
-submitButton.TextColor3 = Color3.new(1, 1, 1)
-submitButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-submitButton.Font = Enum.Font.SourceSans
-submitButton.TextSize = 14
-submitButton.Parent = passwordFrame
+_G.ESPColor = Color3.fromRGB(255, 0, 0) -- Default ESP color
+_G.AimbotStrength = 0.5 -- Default aimbot strength
 
 -- Create the main ScreenGui
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "BerToxGUI"
+screenGui.Name = "NezukoGUI"
 screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-screenGui.Enabled = false -- Start with GUI hidden
 
--- Create a frame for the main GUI
+-- Create a Frame for the GUI
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 250, 0, 350)
-mainFrame.Position = UDim2.new(0.05, 0, 0.1, 0)
-mainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+mainFrame.Size = UDim2.new(0, 200, 0, 300)
+mainFrame.Position = UDim2.new(0.5, -100, 0.5, -150)
+mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 mainFrame.Parent = screenGui
+mainFrame.Visible = false -- Start hidden
 
--- Create title label
+-- Create a Title
 local titleLabel = Instance.new("TextLabel")
-titleLabel.Text = "BerTox"
-titleLabel.Font = Enum.Font.SourceSansBold
-titleLabel.TextSize = 18
 titleLabel.Size = UDim2.new(1, 0, 0, 30)
+titleLabel.Text = "Nezuko External"
 titleLabel.TextColor3 = Color3.new(1, 1, 1)
-titleLabel.BackgroundTransparency = 1
+titleLabel.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+titleLabel.Font = Enum.Font.SourceSansBold
+titleLabel.TextSize = 20
 titleLabel.Parent = mainFrame
 
--- Create checkbox function
+-- Function to create checkboxes
 local function createCheckbox(text, position, toggleVariable)
     local checkbox = Instance.new("TextButton")
     checkbox.Size = UDim2.new(0, 180, 0, 25)
@@ -89,88 +47,97 @@ local function createCheckbox(text, position, toggleVariable)
     checkbox.AutoButtonColor = false
     checkbox.Parent = mainFrame
 
+    -- Checkbox Toggle State
     checkbox.MouseButton1Click:Connect(function()
         _G[toggleVariable] = not _G[toggleVariable]
         checkbox.BackgroundColor3 = _G[toggleVariable] and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(60, 60, 60)
     end)
-    return checkbox
 end
 
--- Create ESP, Aimbot, and Team Check toggle buttons
-local espButton = createCheckbox("Player ESP", UDim2.new(0, 10, 0, 40), "PlayerESP")
-local aimbotButton = createCheckbox("Aimbot", UDim2.new(0, 10, 0, 70), "Aimbot")
-local teamCheckButton = createCheckbox("Team Check", UDim2.new(0, 10, 0, 100), "TeamCheck")
+-- Create color selection button
+local function createColorButton()
+    local colorButton = Instance.new("TextButton")
+    colorButton.Size = UDim2.new(0, 180, 0, 25)
+    colorButton.Position = UDim2.new(0, 10, 0, 40)
+    colorButton.Text = "Change ESP Color"
+    colorButton.TextColor3 = Color3.new(1, 1, 1)
+    colorButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    colorButton.Font = Enum.Font.SourceSans
+    colorButton.TextSize = 14
+    colorButton.Parent = mainFrame
 
--- Create slider for Aimbot strength
-local aimbotStrengthSlider = Instance.new("Frame")
-aimbotStrengthSlider.Size = UDim2.new(0, 180, 0, 50)
-aimbotStrengthSlider.Position = UDim2.new(0, 10, 0, 130)
-aimbotStrengthSlider.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-aimbotStrengthSlider.Parent = mainFrame
+    colorButton.MouseButton1Click:Connect(function()
+        local colorPicker = Instance.new("Color3Value") -- Create a Color3Value to store the chosen color
+        colorPicker.Name = "ESPColor"
+        colorPicker.Value = _G.ESPColor
+        colorPicker.Parent = mainFrame
 
--- Slider label
-local sliderLabel = Instance.new("TextLabel")
-sliderLabel.Text = "Aimbot Strength: " .. string.format("%.2f", _G.AimbotStrength)
-sliderLabel.Size = UDim2.new(1, 0, 0, 25)
-sliderLabel.Position = UDim2.new(0, 0, 0, 0)
-sliderLabel.TextColor3 = Color3.new(1, 1, 1)
-sliderLabel.BackgroundTransparency = 1
-sliderLabel.Parent = aimbotStrengthSlider
+        -- Example of color options (you can expand this)
+        local colors = {
+            Color3.fromRGB(255, 0, 0), -- Red
+            Color3.fromRGB(0, 255, 0), -- Green
+            Color3.fromRGB(0, 0, 255), -- Blue
+            Color3.fromRGB(255, 255, 0), -- Yellow
+        }
 
--- Create slider for Aimbot strength
-local slider = Instance.new("TextButton")
-slider.Size = UDim2.new(1, 0, 0, 25)
-slider.Position = UDim2.new(0, 0, 0, 25)
-slider.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-slider.Text = ""
-slider.Parent = aimbotStrengthSlider
+        -- Create buttons for each color
+        for i, color in ipairs(colors) do
+            local colorBtn = Instance.new("TextButton")
+            colorBtn.Size = UDim2.new(0, 80, 0, 25)
+            colorBtn.Position = UDim2.new(0, 10, 0, 70 + (i - 1) * 30)
+            colorBtn.Text = ""
+            colorBtn.BackgroundColor3 = color
+            colorBtn.Parent = mainFrame
 
-slider.MouseButton1Down:Connect(function()
-    local mouse = LocalPlayer:GetMouse()
-    while UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
-        local position = mouse.X
-        local relativePosition = (position - slider.AbsolutePosition.X) / slider.AbsoluteSize.X
-        _G.AimbotStrength = math.clamp(relativePosition, 0, 1)
-        sliderLabel.Text = "Aimbot Strength: " .. string.format("%.2f", _G.AimbotStrength)
-        wait()
-    end
-end)
+            colorBtn.MouseButton1Click:Connect(function()
+                _G.ESPColor = color
+                colorPicker.Value = color -- Update the color value
+            end)
+        end
+    end)
+end
 
--- Color selector button
-local colorButton = Instance.new("TextButton")
-colorButton.Size = UDim2.new(0, 180, 0, 25)
-colorButton.Position = UDim2.new(0, 10, 0, 230)
-colorButton.Text = "Change ESP Color"
-colorButton.TextColor3 = Color3.new(1, 1, 1)
-colorButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-colorButton.Font = Enum.Font.SourceSans
-colorButton.TextSize = 14
-colorButton.Parent = mainFrame
+-- Create a slider for aimbot strength
+local function createSlider()
+    local slider = Instance.new("TextButton")
+    slider.Size = UDim2.new(0, 180, 0, 25)
+    slider.Position = UDim2.new(0, 10, 0, 150)
+    slider.Text = "Aimbot Strength: " .. _G.AimbotStrength
+    slider.TextColor3 = Color3.new(1, 1, 1)
+    slider.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    slider.Font = Enum.Font.SourceSans
+    slider.TextSize = 14
+    slider.Parent = mainFrame
 
-colorButton.MouseButton1Click:Connect(function()
-    -- Open color selection (basic color picker)
-    local colorPickerGui = Instance.new("ScreenGui")
-    colorPickerGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-
-    local function createColorButton(color, position)
-        local colorButton = Instance.new("TextButton")
-        colorButton.Size = UDim2.new(0, 50, 0, 50)
-        colorButton.Position = position
-        colorButton.BackgroundColor3 = color
-        colorButton.Parent = colorPickerGui
-
-        colorButton.MouseButton1Click:Connect(function()
-            _G.ESPColor = color
-            colorPickerGui:Destroy() -- Close the color picker
+    slider.MouseButton1Down:Connect(function()
+        local dragging = true
+        slider.Text = "Aiming Strength: Drag to adjust"
+        UserInputService.InputChanged:Connect(function(input)
+            if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+                local mousePosition = input.Position.X
+                _G.AimbotStrength = math.clamp((mousePosition - slider.AbsolutePosition.X) / slider.AbsoluteSize.X, 0, 1)
+                slider.Text = "Aimbot Strength: " .. math.floor(_G.AimbotStrength * 100) / 100
+            end
         end)
-    end
+        UserInputService.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                dragging = false
+                slider.Text = "Aimbot Strength: " .. math.floor(_G.AimbotStrength * 100) / 100
+            end
+        end)
+    end)
+end
 
-    createColorButton(Color3.new(1, 0, 0), UDim2.new(0, 10, 0, 10)) -- Red
-    createColorButton(Color3.new(0, 1, 0), UDim2.new(0, 70, 0, 10)) -- Green
-    createColorButton(Color3.new(0, 0, 1), UDim2.new(0, 130, 0, 10)) -- Blue
-    createColorButton(Color3.new(1, 1, 0), UDim2.new(0, 10, 70)) -- Yellow
-    createColorButton(Color3.new(1, 0, 1), UDim2.new(0, 70, 70)) -- Magenta
-    createColorButton(Color3.new(0, 1, 1), UDim2.new(0, 130, 70)) -- Cyan
+-- Function to show/hide the GUI
+local function toggleGui()
+    mainFrame.Visible = not mainFrame.Visible
+end
+
+-- Keybind for showing/hiding the GUI (Right Control)
+UserInputService.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.RightControl then
+        toggleGui()
+    end
 end)
 
 -- Function to create ESP for players
@@ -220,30 +187,15 @@ end
 
 -- Function for Aimbot
 local function Aimbot()
-    if _G.Aimbot and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
+    if _G.Aimbot then
         local target = GetClosestPlayer()
         if target and target.Character and target.Character:FindFirstChild("Head") then
             local targetPosition = target.Character.Head.Position
-            Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetPosition) * CFrame.Angles(0, math.rad(_G.AimbotStrength * 10), 0) -- Adjust camera rotation based on strength
+            local cameraCFrame = CFrame.new(Camera.CFrame.Position, targetPosition)
+            Camera.CFrame = cameraCFrame:Lerp(Camera.CFrame, _G.AimbotStrength) -- Smooth aim adjustment
         end
     end
 end
-
--- Function to show/hide main GUI
-local function toggleMainGUI()
-    screenGui.Enabled = not screenGui.Enabled
-end
-
--- Handle password submission
-submitButton.MouseButton1Click:Connect(function()
-    if passwordInput.Text == password then
-        passwordGui:Destroy() -- Remove password GUI
-        screenGui.Enabled = true -- Show main GUI
-    else
-        passwordInput.Text = "" -- Clear input if incorrect
-        passwordInput.PlaceholderText = "Incorrect Password, Try Again"
-    end
-end)
 
 -- Main render loop
 RunService.RenderStepped:Connect(function()
@@ -251,9 +203,10 @@ RunService.RenderStepped:Connect(function()
     Aimbot()
 end)
 
--- Input to show/hide GUI
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if input.KeyCode == Enum.KeyCode.RightControl then
-        toggleMainGUI()
-    end
-end)
+-- Initialize UI elements
+createCheckbox("Player ESP", UDim2.new(0, 10, 0, 40), "PlayerESP")
+createCheckbox("Team Check", UDim2.new(0, 10, 0, 70), "TeamCheck")
+createColorButton()
+createSlider()
+
+mainFrame.Visible = false -- Start with the GUI hidden
