@@ -1,104 +1,211 @@
---// Cache
 local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Camera = workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
 
---// ESP Settings
-local ESPEnabled = true
-local TeamCheck = true -- Enable team check
-local ESPObjects = {}
+-- Global variables for toggle states
+_G.PlayerESP = false
+_G.TeamCheck = false
+_G.Aimbot = false
+_G.AimbotStrength = 0.5 -- Default Aimbot strength
+_G.ESPColor = Color3.new(1, 0, 0) -- Default ESP color (Red)
 
---// Aimbot Settings
-local AimbotEnabled = true
-local Running = false
-local LockPart = "Head" -- Part to lock onto
-local TriggerKey = Enum.UserInputType.MouseButton2 -- Right mouse button
+-- Create the main ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "BerToxGUI"
+screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+screenGui.Enabled = false -- Start with GUI hidden
 
---// Function to create ESP
-local function CreateESP(player)
-    local highlight = Instance.new("Highlight")
-    highlight.Parent = player.Character
-    highlight.FillColor = player.Team == LocalPlayer.Team and Color3.new(0, 1, 0) or Color3.new(1, 0, 0) -- Green for teammates, Red for enemies
-    highlight.FillTransparency = 0.5
-    highlight.OutlineColor = Color3.new(1, 1, 1)
-    highlight.OutlineTransparency = 0
-    ESPObjects[player] = highlight
+-- Create a frame for the GUI
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 250, 0, 350)
+mainFrame.Position = UDim2.new(0.05, 0, 0.1, 0)
+mainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+mainFrame.Parent = screenGui
+
+-- Create title label
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Text = "BerTox"
+titleLabel.Font = Enum.Font.SourceSansBold
+titleLabel.TextSize = 18
+titleLabel.Size = UDim2.new(1, 0, 0, 30)
+titleLabel.TextColor3 = Color3.new(1, 1, 1)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Parent = mainFrame
+
+-- Create checkbox function
+local function createCheckbox(text, position, toggleVariable)
+    local checkbox = Instance.new("TextButton")
+    checkbox.Size = UDim2.new(0, 180, 0, 25)
+    checkbox.Position = position
+    checkbox.Text = text
+    checkbox.TextColor3 = Color3.new(1, 1, 1)
+    checkbox.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    checkbox.Font = Enum.Font.SourceSans
+    checkbox.TextSize = 14
+    checkbox.AutoButtonColor = false
+    checkbox.Parent = mainFrame
+
+    checkbox.MouseButton1Click:Connect(function()
+        _G[toggleVariable] = not _G[toggleVariable]
+        checkbox.BackgroundColor3 = _G[toggleVariable] and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(60, 60, 60)
+    end)
+    return checkbox
 end
 
---// Function to remove ESP
-local function RemoveESP(player)
-    if ESPObjects[player] then
-        ESPObjects[player]:Destroy()
-        ESPObjects[player] = nil
+-- Create ESP, Aimbot, and Team Check toggle buttons
+local espButton = createCheckbox("Player ESP", UDim2.new(0, 10, 0, 40), "PlayerESP")
+local aimbotButton = createCheckbox("Aimbot", UDim2.new(0, 10, 0, 70), "Aimbot")
+local teamCheckButton = createCheckbox("Team Check", UDim2.new(0, 10, 0, 100), "TeamCheck")
+
+-- Create slider for Aimbot strength
+local aimbotStrengthSlider = Instance.new("Frame")
+aimbotStrengthSlider.Size = UDim2.new(0, 180, 0, 50)
+aimbotStrengthSlider.Position = UDim2.new(0, 10, 0, 130)
+aimbotStrengthSlider.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+aimbotStrengthSlider.Parent = mainFrame
+
+-- Slider label
+local sliderLabel = Instance.new("TextLabel")
+sliderLabel.Text = "Aimbot Strength: " .. string.format("%.2f", _G.AimbotStrength)
+sliderLabel.Size = UDim2.new(1, 0, 0, 25)
+sliderLabel.Position = UDim2.new(0, 0, 0, 0)
+sliderLabel.TextColor3 = Color3.new(1, 1, 1)
+sliderLabel.BackgroundTransparency = 1
+sliderLabel.Parent = aimbotStrengthSlider
+
+-- Create slider for Aimbot strength
+local slider = Instance.new("TextButton")
+slider.Size = UDim2.new(1, 0, 0, 25)
+slider.Position = UDim2.new(0, 0, 0, 25)
+slider.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+slider.Text = ""
+slider.Parent = aimbotStrengthSlider
+
+slider.MouseButton1Down:Connect(function()
+    local mouse = LocalPlayer:GetMouse()
+    while UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
+        local position = mouse.X
+        local relativePosition = (position - slider.AbsolutePosition.X) / slider.AbsoluteSize.X
+        _G.AimbotStrength = math.clamp(relativePosition, 0, 1)
+        sliderLabel.Text = "Aimbot Strength: " .. string.format("%.2f", _G.AimbotStrength)
+        wait()
     end
-end
+end)
 
---// Function to update ESP
-local function UpdateESP()
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player.Character then
-            if ESPEnabled and not ESPObjects[player] then
-                CreateESP(player)
-            elseif not ESPEnabled and ESPObjects[player] then
-                RemoveESP(player)
+-- Color selector button
+local colorButton = Instance.new("TextButton")
+colorButton.Size = UDim2.new(0, 180, 0, 25)
+colorButton.Position = UDim2.new(0, 10, 0, 230)
+colorButton.Text = "Change ESP Color"
+colorButton.TextColor3 = Color3.new(1, 1, 1)
+colorButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+colorButton.Font = Enum.Font.SourceSans
+colorButton.TextSize = 14
+colorButton.Parent = mainFrame
+
+colorButton.MouseButton1Click:Connect(function()
+    -- Open color selection (basic color picker)
+    local colorPickerGui = Instance.new("ScreenGui")
+    colorPickerGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+    local function createColorButton(color, position)
+        local colorButton = Instance.new("TextButton")
+        colorButton.Size = UDim2.new(0, 50, 0, 50)
+        colorButton.Position = position
+        colorButton.BackgroundColor3 = color
+        colorButton.Parent = colorPickerGui
+
+        colorButton.MouseButton1Click:Connect(function()
+            _G.ESPColor = color
+            colorPickerGui:Destroy() -- Close the color picker
+        end)
+    end
+
+    createColorButton(Color3.new(1, 0, 0), UDim2.new(0, 10, 0, 10)) -- Red
+    createColorButton(Color3.new(0, 1, 0), UDim2.new(0, 70, 0, 10)) -- Green
+    createColorButton(Color3.new(0, 0, 1), UDim2.new(0, 130, 0, 10)) -- Blue
+    createColorButton(Color3.new(1, 1, 0), UDim2.new(0, 10, 70)) -- Yellow
+    createColorButton(Color3.new(1, 0, 1), UDim2.new(0, 70, 70)) -- Magenta
+    createColorButton(Color3.new(0, 1, 1), UDim2.new(0, 130, 70)) -- Cyan
+    createColorButton(Color3.new(1, 0.5, 0), UDim2.new(0, 10, 130)) -- Orange
+    createColorButton(Color3.new(0.5, 0, 0.5), UDim2.new(0, 70, 130)) -- Purple
+    createColorButton(Color3.new(0.5, 0.25, 0), UDim2.new(0, 130, 130)) -- Brown
+end)
+
+-- Toggle GUI visibility with Right Control
+UserInputService.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.RightControl then
+        screenGui.Enabled = not screenGui.Enabled
+    end
+end)
+
+-- Function to refresh ESP
+local function RefreshESP()
+    while true do
+        wait(1)
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                local highlight = Instance.new("Highlight")
+                highlight.Parent = player.Character
+                highlight.Adornee = player.Character
+
+                -- Team Check logic
+                if _G.TeamCheck and player.Team == LocalPlayer.Team then
+                    highlight.Enabled = false -- Don't show ESP for teammates
+                else
+                    highlight.FillColor = _G.ESPColor
+                    highlight.OutlineColor = Color3.new(0, 0, 0)
+                    highlight.Enabled = _G.PlayerESP
+                end
+
+                -- Cleanup highlight when player leaves
+                player.CharacterRemoving:Connect(function()
+                    highlight:Destroy()
+                end)
             end
         end
     end
 end
 
---// Function to get closest player
+-- Function to get the closest player for Aimbot
 local function GetClosestPlayer()
     local closestPlayer = nil
     local closestDistance = math.huge
 
     for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild(LockPart) then
-            if TeamCheck and player.Team == LocalPlayer.Team then continue end
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            if _G.TeamCheck and player.Team == LocalPlayer.Team then
+                continue
+            end
 
-            local targetPos, onScreen = Camera:WorldToViewportPoint(player.Character[LockPart].Position)
-
-            if onScreen then
-                local mousePos = UserInputService:GetMouseLocation()
-                local distance = (Vector2.new(mousePos.X, mousePos.Y) - Vector2.new(targetPos.X, targetPos.Y)).Magnitude
-
-                if distance < closestDistance then
-                    closestDistance = distance
-                    closestPlayer = player
-                end
+            local distance = (player.Character.HumanoidRootPart.Position - Camera.CFrame.Position).magnitude
+            if distance < closestDistance then
+                closestDistance = distance
+                closestPlayer = player
             end
         end
     end
+
     return closestPlayer
 end
 
---// Main Aimbot and ESP Function
-RunService.RenderStepped:Connect(function()
-    UpdateESP() -- Update ESP for players
-
-    if Running and AimbotEnabled then
-        local targetPlayer = GetClosestPlayer()
-
-        if targetPlayer and targetPlayer.Character then
-            local targetPos = targetPlayer.Character[LockPart].Position
-            Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetPos) -- Lock the camera on the target
+-- Function for Aimbot
+local function Aimbot()
+    if _G.Aimbot and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
+        local target = GetClosestPlayer()
+        if target and target.Character and target.Character:FindFirstChild("Head") then
+            local targetPosition = target.Character.Head.Position
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetPosition) * CFrame.Angles(0, math.rad(_G.AimbotStrength * 10), 0) -- Adjust camera rotation based on strength
         end
     end
+end
+
+-- Main render loop
+RunService.RenderStepped:Connect(function()
+    Aimbot()
 end)
 
---// Input Handling
-UserInputService.InputBegan:Connect(function(input)
-    if input.UserInputType == TriggerKey then
-        Running = true
-    end
-end)
-
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == TriggerKey then
-        Running = false
-    end
-end)
-
---// Cleanup on player removal
-Players.PlayerRemoving:Connect(RemoveESP)
+-- Start ESP refresh loop
+coroutine.wrap(RefreshESP)()
